@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>EL Post-it</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 370px; min-height: 510px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex; flex-direction: column;
+    background: var(--note-bg, #fef08a);
+    background-image: linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 100% 28px;
+    transition: background-color 0.3s ease;
+  }
+
+  .header {
+    background: var(--note-header, #facc15);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--note-border, #eab308);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.10);
+    transition: background-color 0.3s ease;
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px;
+  }
+  .header-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 14px; font-weight: 800; color: var(--note-text-dark, #713f12);
+  }
+  .pin {
+    width: 13px; height: 13px; background: #ef4444; border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.4);
+    flex-shrink: 0;
+  }
+  #savedBadge { font-size: 10px; color: var(--note-text-dark, #713f12); opacity: 0.65; }
+
+
+  .note-bar { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+  select#noteSelect {
+    flex: 1; background: rgba(255,255,255,0.45);
+    border: 1.5px solid var(--note-border, #ca8a04);
+    border-radius: 6px; font-family: inherit; font-size: 12px;
+    font-weight: 600; color: var(--note-text-dark, #713f12);
+    padding: 4px 7px; cursor: pointer; outline: none;
+  }
+  .btn-icon {
+    cursor: pointer; border: none; border-radius: 6px;
+    font-size: 13px; padding: 4px 7px;
+    transition: all 0.15s ease; line-height: 1; font-family: inherit;
+    font-weight: 600; font-size: 11px;
+  }
+  .btn-new     { background: #16a34a; color: #fff; }
+  .btn-new:hover    { background: #15803d; }
+  .btn-rename  { background: #2563eb; color: #fff; }
+  .btn-rename:hover { background: #1d4ed8; }
+  .btn-del-note{ background: #ef4444; color: #fff; }
+  .btn-del-note:hover{ background: #dc2626; }
+
+
+  .color-bar {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .color-label { font-size: 10px; color: var(--note-text-dark, #713f12); font-weight: 600; opacity: 0.75; margin-right: 2px; }
+  .color-swatch {
+    width: 18px; height: 18px; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.1s, border-color 0.1s;
+    flex-shrink: 0;
+  }
+  .color-swatch:hover   { transform: scale(1.2); }
+  .color-swatch.active  { border-color: #1c1917; transform: scale(1.15); }
+
+
+  .note-area { flex: 1; padding: 10px 14px 4px; display: flex; flex-direction: column; }
+  textarea {
+    flex: 1; width: 100%; min-height: 270px;
+    background: transparent; border: none; outline: none; resize: none;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 14px; line-height: 28px; color: #1c1917;
+  }
+  textarea::placeholder { color: var(--note-text-dark, #a16207); opacity: 0.5; font-style: italic; }
+  .char-count { text-align: right; font-size: 10px; color: var(--note-text-dark, #a16207); opacity: 0.65; padding: 2px 0 2px; }
+  .datetime   { font-size: 10px; color: var(--note-text-dark, #92400e); opacity: 0.65; padding: 0 14px 4px; text-align: right; }
+
+
+  .btn-bar {
+    background: var(--note-header, #fde047);
+    border-top: 2px solid var(--note-border, #eab308);
+    padding: 8px 12px; display: flex; gap: 6px;
+    transition: background-color 0.3s ease;
+  }
+  button.btn-action {
+    cursor: pointer; border: none; border-radius: 7px;
+    font-family: inherit; font-weight: 600; font-size: 11px;
+    padding: 7px 8px; transition: all 0.15s ease;
+    display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center;
+  }
+  .btn-save    { background: #16a34a; color: #fff; }
+  .btn-save:hover    { background: #15803d; transform: translateY(-1px); }
+  .btn-clear   { background: #ef4444; color: #fff; }
+  .btn-clear:hover   { background: #dc2626; transform: translateY(-1px); }
+  .btn-export  { background: #2563eb; color: #fff; }
+  .btn-export:hover  { background: #1d4ed8; transform: translateY(-1px); }
+
+
+  .toast {
+    position: fixed; bottom: 50px; left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #1c1917; color: #fff; padding: 6px 16px;
+    border-radius: 16px; font-size: 12px; font-weight: 500;
+    opacity: 0; transition: all 0.25s ease; pointer-events: none; z-index: 100;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="header" id="header">
+  <div class="header-top">
+    <div class="header-title">
+      <div class="pin"></div>
+      EL Post-it
+    </div>
+    <div id="savedBadge"></div>
+  </div>
+  <div class="note-bar">
+    <select id="noteSelect"></select>
+    <button class="btn-icon btn-new"      id="btnNew"     title="Nuovo Post-it">+ Nuovo</button>
+    <button class="btn-icon btn-rename"   id="btnRename"  title="Rinomina">Rinomina</button>
+    <button class="btn-icon btn-del-note" id="btnDelNote" title="Elimina nota">Elimina</button>
+  </div>
+  <div class="color-bar">
+    <span class="color-label">Colore:</span>
+    <div class="color-swatch" data-bg="#fef08a" data-hd="#facc15" data-bd="#eab308" data-tx="#713f12" style="background:#fef08a;" title="Giallo"></div>
+    <div class="color-swatch" data-bg="#fecdd3" data-hd="#fda4af" data-bd="#fb7185" data-tx="#881337" style="background:#fecdd3;" title="Rosa"></div>
+    <div class="color-swatch" data-bg="#bbf7d0" data-hd="#86efac" data-bd="#4ade80" data-tx="#14532d" style="background:#bbf7d0;" title="Verde"></div>
+    <div class="color-swatch" data-bg="#bae6fd" data-hd="#7dd3fc" data-bd="#38bdf8" data-tx="#0c4a6e" style="background:#bae6fd;" title="Azzurro"></div>
+    <div class="color-swatch" data-bg="#e9d5ff" data-hd="#d8b4fe" data-bd="#c084fc" data-tx="#581c87" style="background:#e9d5ff;" title="Lilla"></div>
+    <div class="color-swatch" data-bg="#fed7aa" data-hd="#fdba74" data-bd="#fb923c" data-tx="#7c2d12" style="background:#fed7aa;" title="Arancione"></div>
+  </div>
+</div>
+
+<div class="note-area">
+  <textarea id="notepad" placeholder="Scrivi qui i tuoi appunti..."></textarea>
+  <div class="char-count"><span id="charCount">0</span> caratteri</div>
+</div>
+<div class="datetime" id="datetime"></div>
+
+<div class="btn-bar" id="btnBar">
+  <button id="btnSave"   class="btn-action btn-save">Salva</button>
+  <button id="btnClear"  class="btn-action btn-clear">Cancella testo</button>
+  <button id="btnExport" class="btn-action btn-export">Esporta .txt</button>
+</div>
+<div class="toast" id="toast"></div>
+<script src="popup.js"></script>
+</body>
+</html>
